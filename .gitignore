@@ -1,0 +1,6 @@
+*.py[doc]
+.DS_Store
+bower_components
+!.gitkeep
+static/
+*.sqlite3
