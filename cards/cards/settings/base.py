@@ -58,10 +58,11 @@ DJANGO_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'pipeline',
 )
 
 LOCAL_APPS = (
-    'pipeline',
+    'deck',
 )
 
 MIDDLEWARE_CLASSES = (

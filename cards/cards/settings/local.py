@@ -18,7 +18,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-LOCAL_APPS += (
+DJANGO_APPS += (
     'debug_toolbar',
 )
 

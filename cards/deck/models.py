@@ -1,6 +1,11 @@
+import collections
+import uuid
 import random
 
+from jsonfield import JSONField
+
 from django.db import models
+
 
 class Card(object):
 
@@ -27,27 +32,31 @@ class Card(object):
 
     def __eq__(self, other):
         suit, rank = self.code
+
         if isinstance(other, int):
-            other_rank = other
+            other_rank = Card.RANKS[other]
+
             if rank == other_rank:
                 return True
             return False
         elif isinstance(other, Card):
             other_suit, other_rank = other.code
+
             if suit == other_suit and rank == other_rank:
                 return True
             return False
         else:
-            raise Exception("Illegal Operation: Operand must be Card or Int")
+            raise Exception("Illegal Operation: Operands must be Card or Int")
 
     def __lt__(self, other):
         _, rank = self.code
+
         if isinstance(other, int):
             other_rank = other
         elif isinstance(other, Card):
             _, other_rank = other.code
         else:
-            raise Exception("Illegal Operation: Operand must be Card or Int")
+            raise Exception("Illegal Operation: Operands must be Card or Int")
 
         if rank < other_rank:
             return True
@@ -60,15 +69,7 @@ class Card(object):
         if isinstance(other, int):
             return (self < other) or (self == other)
         else:
-            raise Exception("Illegal Operation: Operand must be Card or Int")
-
-    def is_black(self):
-        if self.suit in ["Spades", "Clubs"]:
-            return True
-        return False
-
-    def is_red(self):
-        return not self.is_black()
+            raise Exception("Illegal Operation: Operands must be Card or Int")
 
     def __str__(self):
         return "{} of {}".format(self.rank, self.suit)
@@ -76,26 +77,35 @@ class Card(object):
 
 class Deck(object):
 
-    def __init__(self, n = 1):
-        self.cards = []
-        self.pile = None
-        for suit in Card.SUITS.keys():
-            for rank in Card.RANKS.keys():
-                for i in range(0, n):
-                    self.cards.append(Card(rank, suit))
-        self.shuffle()
+    def __init__(self, n = 1, cards = None, pile = None, deck_model = None):
+        self.pile = pile
+
+        if cards:
+            self.cards = cards
+        else:
+            self.cards = []
+
+            for suit in Card.SUITS.keys():
+                for rank in Card.RANKS.keys():
+                    for i in range(0, n):
+                        self.cards.append(Card(rank, suit))
+            self.shuffle()
+
+        if deck_model:
+            self.deck_model = deck_model
+            self.deck_model.save()
+        self.count = len(self.cards)
+
+    def __iter__(self):
+        return iter(self.cards)
 
     def shuffle(self):
         random.shuffle(self.cards)
 
-    @property
-    def count(self):
-        return len(self.cards)
-
     def draw(self, n = 1, till = None):
         if not self.has_cards() or n > self.count:
             raise Exception("You're trying to draw more cards than are in the"
-                            " deck")
+                            " deck!")
         else:
             cards = []
             pool = self.cards[:]
@@ -105,15 +115,23 @@ class Deck(object):
                 if till and card == till:
                     break
                 n -= 1
+
             if len(cards) == 1:
                 cards = cards[0]
+
             self.cards = pool
+            self.count = len(self.cards)
             return cards
+
+    def _push(self, card):
+        self.cards.append(card)
+        self.count = len(self.cards)
 
     def discard(self, card):
         if not self.pile:
             self.pile = Deck(0)
-        self.pile.cards.append(card)
+
+        self.pile._push(card)
 
     def has_cards(self):
         if self.count > 0:
@@ -121,8 +139,17 @@ class Deck(object):
         return False
 
     def __str__(self):
-        string = "Count: {}\n".format(self.count)
+        string  = "Count: {}\n".format(self.count)
         string += "*" * len(string) + "\n"
+
         for i, card in enumerate(self.cards):
             string += "{}\t".format(i + 1) + str(card) + "\n"
         return string
+
+
+class DeckModel(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    cards = JSONField(load_kwargs={'object_pair_hooks':
+                                    collections.OrderedDict})
+    pile = JSONField(load_kwargs={'object_pair_hooks': collections.OrderedDict},
+                     default=[])
