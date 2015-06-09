@@ -1,11 +1,13 @@
 import collections
-import uuid
+import json
 import random
+import uuid
 
 from jsonfield import JSONField
 
 from django.db import models
 
+import deck.encoders
 
 class Card(object):
 
@@ -34,7 +36,21 @@ class Card(object):
         suit, rank = self.code
 
         if isinstance(other, int):
-            other_rank = Card.RANKS[other]
+            try:
+                other_rank = Card.RANKS[other]
+            except KeyError:
+                message = "Numerical operands must be between 2 and 10."
+                raise Exception(message)
+
+            if rank == other_rank:
+                return True
+            return False
+        elif isinstance(other, str):
+            try:
+                other_rank = Card.RANKS[other]
+            except KeyError:
+                message = "Operands must be a valid Rank."
+                raise Exception(message)
 
             if rank == other_rank:
                 return True
@@ -46,30 +62,40 @@ class Card(object):
                 return True
             return False
         else:
-            raise Exception("Illegal Operation: Operands must be Card or Int")
+            raise Exception("Operands must be Card or Int")
 
-    def __lt__(self, other):
+    def _calculate_rank(self, other):
         _, rank = self.code
 
         if isinstance(other, int):
-            other_rank = other
+            other_rank = Card.RANKS[other]
+        elif isinstance(other, str):
+            try:
+                other_rank = Card.RANKS[other]
+            except KeyError:
+                raise Exception("Numerical card values must be between 2 and 10")
         elif isinstance(other, Card):
             _, other_rank = other.code
         else:
             raise Exception("Illegal Operation: Operands must be Card or Int")
 
+        return rank, other_rank
+
+    def __lt__(self, other):
+        rank, other_rank = self._calculate_rank(other)
+
         if rank < other_rank:
             return True
         return False
 
-    def __gt__(self, other):
-        return not (self < other)
-
     def __le__(self, other):
-        if isinstance(other, int):
-            return (self < other) or (self == other)
-        else:
-            raise Exception("Illegal Operation: Operands must be Card or Int")
+        return (self < other) or (self == other)
+
+    def __gt__(self, other):
+        return (not self < other) and (not self == other)
+
+    def __ge__(self, other):
+        return (self > other) or (self == other)
 
     def __str__(self):
         return "{} of {}".format(self.rank, self.suit)
@@ -138,6 +164,12 @@ class Deck(object):
             return True
         return False
 
+    def save(self):
+        if self.deck_model:
+            self.deck_model.save()
+        else:
+            raise Exception("No Deck Model Set!")
+
     def __str__(self):
         string  = "Count: {}\n".format(self.count)
         string += "*" * len(string) + "\n"
@@ -149,7 +181,18 @@ class Deck(object):
 
 class DeckModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    cards = JSONField(load_kwargs={'object_pair_hooks':
+    cards = JSONField(load_kwargs={'object_pairs_hook':
                                     collections.OrderedDict})
-    pile = JSONField(load_kwargs={'object_pair_hooks': collections.OrderedDict},
+    pile = JSONField(load_kwargs={'object_pairs_hook': collections.OrderedDict},
                      default=[])
+
+    @classmethod
+    def create_deck(cls, *args, **kwargs):
+        _deck = Deck(*args, **kwargs)
+        encoded_deck = json.loads(deck.encoders.DeckEncoder().encode(_deck))
+        _deck.deck_model = cls.objects.create(
+            cards=encoded_deck['cards'],
+            pile=encoded_deck['pile']
+        )
+        _deck.save()
+        return _deck

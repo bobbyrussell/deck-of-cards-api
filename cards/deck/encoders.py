@@ -1,7 +1,6 @@
 import json
 
-from .models import Card, Deck
-
+import deck.models
 
 class CardEncoder(json.JSONEncoder):
 
@@ -21,7 +20,7 @@ class DeckEncoder(json.JSONEncoder):
 
 def card_decoder(card):
     if 'suit' in card and 'rank' in card:
-        return Card(suit=card['suit'], rank=card['rank'])
+        return deck.models.Card(suit=card['suit'], rank=card['rank'])
 
 
 class CardDecoder(object):
@@ -30,16 +29,16 @@ class CardDecoder(object):
         return json.loads(obj, object_hook=card_decoder)
 
 
-def deck_decoder(deck):
-    if 'count' in deck and 'cards':
+def deck_decoder(_deck):
+    if 'count' in _deck and 'cards' in _deck:
         card_decoder = CardDecoder()
-        cards = [card_decoder.decode(card) for card in deck['cards']]
+        cards = [card_decoder.decode(card) for card in _deck['cards']]
 
-        if not deck['pile']:
-            pile = Deck(0)
+        if not _deck['pile']:
+            pile = deck.models.Deck(0)
         else:
-            pile = deck_decoder(deck['pile'])
-        return Deck(cards=cards, pile=pile)
+            pile = deck_decoder(_deck['pile'])
+        return deck.models.Deck(cards=cards, pile=pile)
     else:
         raise Exception("Cannot Decode Deck!")
 
