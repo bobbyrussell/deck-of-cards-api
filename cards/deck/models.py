@@ -100,11 +100,22 @@ class Card(object):
     def __str__(self):
         return "{} of {}".format(self.rank, self.suit)
 
+    def __repr__(self):
+        return "{} of {}".format(self.rank, self.suit)
+
 
 class Deck(object):
 
+    @staticmethod
+    def get(_id):
+        deck_model = DeckModel.objects.get(id=_id)
+        decoded_deck = deck_model.decode()
+        decoded_deck.deck_model = deck_model
+        return decoded_deck
+
     def __init__(self, n = 1, cards = None, pile = None, deck_model = None):
         self.pile = pile
+        self.deck_model = deck_model
 
         if cards:
             self.cards = cards
@@ -117,10 +128,14 @@ class Deck(object):
                         self.cards.append(Card(rank, suit))
             self.shuffle()
 
-        if deck_model:
-            self.deck_model = deck_model
-            self.deck_model.save()
         self.count = len(self.cards)
+
+    @property
+    def id(self):
+        if self.deck_model:
+            return self.deck_model.id
+        else:
+            raise Exception("No ID set: Use DeckModel.create_deck() instead")
 
     def __iter__(self):
         return iter(self.cards)
@@ -156,8 +171,13 @@ class Deck(object):
     def discard(self, card):
         if not self.pile:
             self.pile = Deck(0)
-
-        self.pile._push(card)
+        if isinstance(card, Card):
+            self.pile._push(card)
+        elif isinstance(card, list) and all([isinstance(c, Card) for c in card]):
+            for c in card:
+                self.pile._push(c)
+        else:
+            return Exception("You may only discard a Card or a list of Cards")
 
     def has_cards(self):
         if self.count > 0:
@@ -166,7 +186,16 @@ class Deck(object):
 
     def save(self):
         if self.deck_model:
+            encoded_deck = deck.encoders.DeckEncoder().default(self)
+            self.deck_model.cards = encoded_deck['cards']
+            self.deck_model.pile = encoded_deck['pile']
             self.deck_model.save()
+        else:
+            raise Exception("No Deck Model Set!")
+
+    def delete(self):
+        if self.deck_model:
+            deck_model.delete()
         else:
             raise Exception("No Deck Model Set!")
 
@@ -178,13 +207,24 @@ class Deck(object):
             string += "{}\t".format(i + 1) + str(card) + "\n"
         return string
 
+    def __repr__(self):
+        return "Deck ({} cards left)".format(self.count)
+
 
 class DeckModel(models.Model):
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    count = models.IntegerField()
     cards = JSONField(load_kwargs={'object_pairs_hook':
                                     collections.OrderedDict})
     pile = JSONField(load_kwargs={'object_pairs_hook': collections.OrderedDict},
                      default=[])
+
+    def decode(self):
+        return deck.encoders.deck_decoder(
+            {'cards': self.cards, 'pile': self.pile, 'count': self.count}
+        )
+
 
     @classmethod
     def create_deck(cls, *args, **kwargs):
@@ -192,7 +232,7 @@ class DeckModel(models.Model):
         encoded_deck = json.loads(deck.encoders.DeckEncoder().encode(_deck))
         _deck.deck_model = cls.objects.create(
             cards=encoded_deck['cards'],
-            pile=encoded_deck['pile']
+            pile=encoded_deck['pile'],
+            count=encoded_deck['count']
         )
-        _deck.save()
         return _deck

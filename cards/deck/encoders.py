@@ -4,17 +4,23 @@ import deck.models
 
 class CardEncoder(json.JSONEncoder):
 
-    def default(self, obj):
-        return obj.__dict__
+    def default(self, card):
+        encoded_card = dict((k, v) for k, v in card.__dict__.items())
+        return card.__dict__
 
 
 class DeckEncoder(json.JSONEncoder):
 
-    def default(self, deck):
+    def default(self, _deck):
         encoder = CardEncoder()
-        cards = [encoder.encode(card) for card in deck.cards]
-        encoded_deck = dict((k, v) for k, v in deck.__dict__.items())
+        cards = [encoder.encode(card) for card in _deck.cards]
+        encoded_deck = dict((k, v) for k, v in _deck.__dict__.items())
         encoded_deck['cards'] = cards
+
+        if isinstance(_deck.pile, deck.models.Deck):
+            pile_cards = self.default(_deck.pile)
+            encoded_deck['pile'] = pile_cards
+
         return encoded_deck
 
 

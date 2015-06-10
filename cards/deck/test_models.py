@@ -116,4 +116,32 @@ class TestDeckModel(TestCase):
         self.deck = DeckModel.create_deck()
 
     def test_deck(self):
-        pass
+        self.assertEqual(self.deck.count, 52)
+        hand = self.deck.draw(7)
+        deck_id = self.deck.id
+        self.deck.save()
+        self.deck = None
+
+        deck = Deck.get(deck_id)
+        self.assertTrue(deck.count, 52 - 7)
+
+        for card in deck:
+            self.assertNotIn(card, hand)
+
+        hand = deck.draw(7)
+        self.assertTrue(deck.count, (52 - 7) -  7)
+        self.assertEqual(deck.pile.count, 0)
+        deck.discard(hand)
+        self.assertEqual(deck.pile.count, 7)
+        deck.save()
+        deck = None
+
+        deck = Deck.get(deck_id)
+        self.assertTrue(deck.count, (52 - 7) -  7)
+        self.assertEqual(deck.pile.count, 7)
+
+        for card in deck:
+            self.assertNotIn(card, hand)
+
+        for card in hand:
+            self.assertIn(card, deck.pile)
