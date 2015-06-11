@@ -1,5 +1,7 @@
 import json
 
+from rest_framework import serializers
+
 import deck.models
 
 class CardEncoder(json.JSONEncoder):
