@@ -64,7 +64,9 @@ class TestDeck(TestCase):
 
     def setUp(self):
         self.deck = Deck()
+        self.unshuffled_deck = Deck(shuffle=False)
         self.double_deck = Deck(2)
+        self.ace_of_spades = Card("Ace", "Spades")
 
     def test_encoding(self):
         # confirm that decoding and encoding doesn't break anything
@@ -109,6 +111,21 @@ class TestDeck(TestCase):
         card = cards.pop()
         self.deck.discard(card)
         self.assertEqual(self.deck.pile.draw(), card)
+
+    def test_draw(self):
+        queen = self.unshuffled_deck.draw()
+        self.assertEqual(queen, Card("Queen", "Spades"))
+
+        cards_until_ace = self.unshuffled_deck.draw(till=self.ace_of_spades)
+        last_card = cards_until_ace[-1]
+        self.assertEqual(last_card, self.ace_of_spades)
+        self.assertEqual(self.unshuffled_deck.count + len(cards_until_ace) + 1, 
+                         52)
+
+        card = self.unshuffled_deck.draw()
+        drawn_out_deck = self.unshuffled_deck.draw(till=card)
+        self.assertFalse(self.unshuffled_deck.has_cards())
+        self.assertRaises(Exception, self.unshuffled_deck.draw)
 
 class TestDeckModel(TestCase):
 

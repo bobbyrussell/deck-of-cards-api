@@ -9,6 +9,7 @@ from django.db import models
 
 import deck.encoders
 
+
 class Card(object):
 
     SUITS = {
@@ -113,20 +114,25 @@ class Deck(object):
         decoded_deck.deck_model = deck_model
         return decoded_deck
 
-    def __init__(self, n = 1, cards = None, pile = None, deck_model = None):
+    def __init__(self, n = 1, cards = None, pile = None, 
+                 deck_model = None, shuffle = True):
         self.pile = pile
         self.deck_model = deck_model
+        self.encoder = deck.encoders.DeckEncoder()
 
         if cards:
             self.cards = cards
         else:
             self.cards = []
 
-            for suit in Card.SUITS.keys():
-                for rank in Card.RANKS.keys():
+            suits, ranks = sorted(Card.SUITS.keys()), sorted(Card.RANKS.keys())
+            for suit in suits:
+                for rank in ranks:
                     for i in range(0, n):
                         self.cards.append(Card(rank, suit))
-            self.shuffle()
+
+            if shuffle:
+                self.shuffle()
 
         self.count = len(self.cards)
 
@@ -143,6 +149,12 @@ class Deck(object):
     def shuffle(self):
         random.shuffle(self.cards)
 
+    def _search(self, till):
+        for i, card in enumerate(self):
+            if card == till:
+                return i
+        return -1
+
     def draw(self, n = 1, till = None):
         if not self.has_cards() or n > self.count:
             raise Exception("You're trying to draw more cards than are in the"
@@ -150,12 +162,18 @@ class Deck(object):
         else:
             cards = []
             pool = self.cards[:]
-            while n > 0:
-                card = pool.pop()
-                cards.append(card)
-                if till and card == till:
-                    break
-                n -= 1
+
+            if till:
+                index = self._search(till)
+                if index >= 0:
+                    pool, cards = pool[:index], pool[index:len(pool)]
+                    cards.reverse()
+                else:
+                    cards, pool = pool, cards
+            else:
+                while n > 0:
+                    cards.append(pool.pop())
+                    n -= 1
 
             if len(cards) == 1:
                 cards = cards[0]
@@ -171,9 +189,11 @@ class Deck(object):
     def discard(self, card):
         if not self.pile:
             self.pile = Deck(0)
+
         if isinstance(card, Card):
             self.pile._push(card)
-        elif isinstance(card, list) and all([isinstance(c, Card) for c in card]):
+        elif isinstance(card, list) \
+        and all([isinstance(c, Card) for c in card]):
             for c in card:
                 self.pile._push(c)
         else:
@@ -184,11 +204,14 @@ class Deck(object):
             return True
         return False
 
+    def encode(self):
+        return self.encoder.default(self)
+
     def save(self):
         if self.deck_model:
-            encoded_deck = deck.encoders.DeckEncoder().default(self)
+            encoded_deck = self.encode()
             self.deck_model.cards = encoded_deck['cards']
-            self.deck_model.pile = encoded_deck['pile']
+            self.deck_model.pile  = encoded_deck['pile']
             self.deck_model.save()
         else:
             raise Exception("No Deck Model Set!")
@@ -220,16 +243,18 @@ class DeckModel(models.Model):
     pile = JSONField(load_kwargs={'object_pairs_hook': collections.OrderedDict},
                      default=[])
 
+    def __repr__(self):
+        return str(self.id)
+
     def decode(self):
         return deck.encoders.deck_decoder(
             {'cards': self.cards, 'pile': self.pile, 'count': self.count}
         )
 
-
     @classmethod
     def create_deck(cls, *args, **kwargs):
         _deck = Deck(*args, **kwargs)
-        encoded_deck = json.loads(deck.encoders.DeckEncoder().encode(_deck))
+        encoded_deck = _deck.encode()
         _deck.deck_model = cls.objects.create(
             cards=encoded_deck['cards'],
             pile=encoded_deck['pile'],

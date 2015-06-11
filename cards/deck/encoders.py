@@ -6,15 +6,17 @@ class CardEncoder(json.JSONEncoder):
 
     def default(self, card):
         encoded_card = dict((k, v) for k, v in card.__dict__.items())
-        return card.__dict__
+        return encoded_card
 
 
 class DeckEncoder(json.JSONEncoder):
 
     def default(self, _deck):
+        fields = ['cards', 'pile', 'count']
         encoder = CardEncoder()
         cards = [encoder.encode(card) for card in _deck.cards]
-        encoded_deck = dict((k, v) for k, v in _deck.__dict__.items())
+        encoded_deck = dict((k, v) for k, v in _deck.__dict__.items() \
+                                   if k in fields)
         encoded_deck['cards'] = cards
 
         if isinstance(_deck.pile, deck.models.Deck):
