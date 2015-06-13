@@ -64,6 +64,7 @@ DJANGO_APPS = (
 
 LOCAL_APPS = (
     'deck',
+    'api',
 )
 
 MIDDLEWARE_CLASSES = (

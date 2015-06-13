@@ -2,35 +2,37 @@ import json
 
 from rest_framework import serializers
 
-import deck.models
+import models
+
 
 class CardEncoder(json.JSONEncoder):
 
     def default(self, card):
-        encoded_card = dict((k, v) for k, v in card.__dict__.items())
-        return encoded_card
+        return dict((k, v) for k, v in card.__dict__.items())
 
 
 class DeckEncoder(json.JSONEncoder):
 
-    def default(self, _deck):
+    def default(self, deck):
         fields = ['cards', 'pile', 'count']
-        encoder = CardEncoder()
-        cards = [encoder.encode(card) for card in _deck.cards]
-        encoded_deck = dict((k, v) for k, v in _deck.__dict__.items() \
-                                   if k in fields)
+        cards = [CardEncoder().encode(card) for card in deck.cards]
+        deck_object = deck.__dict__.items()
+        encoded_deck = dict((k, v) for k, v in deck_object if k in fields)
         encoded_deck['cards'] = cards
 
-        if isinstance(_deck.pile, deck.models.Deck):
-            pile_cards = self.default(_deck.pile)
+        if isinstance(deck.pile, models.Deck):
+            pile_cards = self.default(deck.pile)
             encoded_deck['pile'] = pile_cards
+
+            if deck.deck_model:
+                encoded_deck['id'] = deck.deck_model.id
 
         return encoded_deck
 
 
 def card_decoder(card):
     if 'suit' in card and 'rank' in card:
-        return deck.models.Card(suit=card['suit'], rank=card['rank'])
+        return models.Card(suit=card['suit'], rank=card['rank'])
 
 
 class CardDecoder(object):
@@ -41,14 +43,13 @@ class CardDecoder(object):
 
 def deck_decoder(_deck):
     if 'count' in _deck and 'cards' in _deck:
-        card_decoder = CardDecoder()
-        cards = [card_decoder.decode(card) for card in _deck['cards']]
+        cards = [CardDecoder().decode(card) for card in _deck['cards']]
 
         if not _deck['pile']:
-            pile = deck.models.Deck(0)
+            pile = models.Deck(0)
         else:
             pile = deck_decoder(_deck['pile'])
-        return deck.models.Deck(cards=cards, pile=pile)
+        return models.Deck(cards=cards, pile=pile)
     else:
         raise Exception("Cannot Decode Deck!")
 

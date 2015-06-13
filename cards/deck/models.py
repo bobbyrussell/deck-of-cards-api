@@ -108,13 +108,17 @@ class Card(object):
 class Deck(object):
 
     @staticmethod
-    def get(_id):
-        deck_model = DeckModel.objects.get(id=_id)
+    def get(id):
+        try:
+            deck_model = DeckModel.objects.get(pk=id)
+        except Exception as e:
+            raise e
+
         decoded_deck = deck_model.decode()
         decoded_deck.deck_model = deck_model
         return decoded_deck
 
-    def __init__(self, n = 1, cards = None, pile = None, 
+    def __init__(self, n = 1, cards = None, pile = None,
                  deck_model = None, shuffle = True):
         self.pile = pile
         self.deck_model = deck_model
@@ -139,7 +143,7 @@ class Deck(object):
     @property
     def id(self):
         if self.deck_model:
-            return self.deck_model.id
+            return str(self.deck_model.id)
         else:
             raise Exception("No ID set: Use DeckModel.create_deck() instead")
 
@@ -205,7 +209,11 @@ class Deck(object):
         return False
 
     def encode(self):
-        return self.encoder.default(self)
+        encoded_deck = self.encoder.default(self)
+
+        if self.deck_model:
+            encoded_deck['id'] = self.id
+        return encoded_deck
 
     def save(self):
         if self.deck_model:
@@ -246,10 +254,15 @@ class DeckModel(models.Model):
     def __repr__(self):
         return str(self.id)
 
+    def __unicode__(self):
+        return str(self.id)
+
     def decode(self):
-        return deck.encoders.deck_decoder(
-            {'cards': self.cards, 'pile': self.pile, 'count': self.count}
-        )
+        return deck.encoders.deck_decoder({
+            'cards': self.cards,
+            'pile': self.pile,
+            'count': self.count,
+        })
 
     @classmethod
     def create_deck(cls, *args, **kwargs):

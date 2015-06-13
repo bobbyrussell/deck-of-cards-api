@@ -7,4 +7,5 @@ class DeckModelSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DeckModel
-        fields = ('id', 'count', 'cards', 'pile')
+        fields = ('id', 'count', 'pile')
+        read_only_fields = ('id', 'count', 'pile')
