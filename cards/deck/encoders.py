@@ -11,21 +11,29 @@ class CardEncoder(json.JSONEncoder):
         return dict((k, v) for k, v in card.__dict__.items())
 
 
+class PileEncoder(json.JSONEncoder):
+
+    def default(self, pile):
+        piles = dict(pile.piles)
+
+        for name, pile in pile.piles.items():
+            piles[name] = [CardEncoder().encode(card) for card in pile]
+
+        return piles
+
+
 class DeckEncoder(json.JSONEncoder):
 
     def default(self, deck):
         fields = ['cards', 'pile', 'count']
-        cards = [CardEncoder().encode(card) for card in deck.cards]
         deck_object = deck.__dict__.items()
         encoded_deck = dict((k, v) for k, v in deck_object if k in fields)
-        encoded_deck['cards'] = cards
+        encoder = CardEncoder()
+        encoded_deck['cards'] = [encoder.encode(card) for card in deck.cards]
+        encoded_deck['pile'] = PileEncoder().encode(deck.pile)
 
-        if isinstance(deck.pile, models.Deck):
-            pile_cards = self.default(deck.pile)
-            encoded_deck['pile'] = pile_cards
-
-            if deck.deck_model:
-                encoded_deck['id'] = deck.deck_model.id
+        if deck.deck_model:
+            encoded_deck['id'] = deck.deck_model.id
 
         return encoded_deck
 
@@ -41,15 +49,33 @@ class CardDecoder(object):
         return json.loads(obj, object_hook=card_decoder)
 
 
-def deck_decoder(_deck):
-    if 'count' in _deck and 'cards' in _deck:
-        cards = [CardDecoder().decode(card) for card in _deck['cards']]
+def pile_decoder(pile):
+    if not isinstance(pile, dict):
+        try:
+            pile = json.loads(pile)
+        except:
+            raise Exception("Piles should be dict or JSON objects")
 
-        if not _deck['pile']:
-            pile = models.Deck(0)
-        else:
-            pile = deck_decoder(_deck['pile'])
-        return models.Deck(cards=cards, pile=pile)
+    piles = dict(pile)
+
+    for name, pile in pile.items():
+        piles[name] = [CardDecoder().decode(card) for card in pile]
+
+    return models.Pile(piles=piles)
+
+
+class PileDecoder(object):
+
+    def decode(self, obj):
+        return json.loads(obj, object_hook=pile_decoder)
+
+
+def deck_decoder(deck):
+    if 'cards' in deck and 'pile' in deck:
+        cards = [CardDecoder().decode(card) for card in deck['cards']]
+        pile = pile_decoder(deck['pile'])
+        deck = models.Deck(cards=cards, pile=pile)
+        return deck
     else:
         raise Exception("Cannot Decode Deck!")
 

@@ -7,8 +7,7 @@ from jsonfield import JSONField
 
 from django.db import models
 
-import deck.encoders
-
+import encoders
 
 class Card(object):
 
@@ -111,8 +110,8 @@ class Deck(object):
     def get(id):
         try:
             deck_model = DeckModel.objects.get(pk=id)
-        except Exception as e:
-            raise e
+        except Exception:
+            raise Exception("No Such Deck Exists")
 
         decoded_deck = deck_model.decode()
         decoded_deck.deck_model = deck_model
@@ -120,9 +119,9 @@ class Deck(object):
 
     def __init__(self, n = 1, cards = None, pile = None,
                  deck_model = None, shuffle = True):
-        self.pile = pile
+        self.pile = pile or Pile()
         self.deck_model = deck_model
-        self.encoder = deck.encoders.DeckEncoder()
+        self.encoder = encoders.DeckEncoder()
 
         if cards:
             self.cards = cards
@@ -159,7 +158,10 @@ class Deck(object):
                 return i
         return -1
 
-    def draw(self, n = 1, till = None):
+    def draw(self, n = 1, till = None, from_pile = None):
+        if from_pile:
+            return self._draw_from_pile(from_pile)
+
         if not self.has_cards() or n > self.count:
             raise Exception("You're trying to draw more cards than are in the"
                             " deck!")
@@ -186,22 +188,8 @@ class Deck(object):
             self.count = len(self.cards)
             return cards
 
-    def _push(self, card):
-        self.cards.append(card)
-        self.count = len(self.cards)
-
-    def discard(self, card):
-        if not self.pile:
-            self.pile = Deck(0)
-
-        if isinstance(card, Card):
-            self.pile._push(card)
-        elif isinstance(card, list) \
-        and all([isinstance(c, Card) for c in card]):
-            for c in card:
-                self.pile._push(c)
-        else:
-            return Exception("You may only discard a Card or a list of Cards")
+    def discard(self, card, pile = None):
+        self.pile.push(card, into=pile)
 
     def has_cards(self):
         if self.count > 0:
@@ -211,8 +199,6 @@ class Deck(object):
     def encode(self):
         encoded_deck = self.encoder.default(self)
 
-        if self.deck_model:
-            encoded_deck['id'] = self.id
         return encoded_deck
 
     def save(self):
@@ -246,10 +232,8 @@ class DeckModel(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     count = models.IntegerField()
-    cards = JSONField(load_kwargs={'object_pairs_hook':
-                                    collections.OrderedDict})
-    pile = JSONField(load_kwargs={'object_pairs_hook': collections.OrderedDict},
-                     default=[])
+    cards = JSONField()
+    pile  = JSONField()
 
     def __repr__(self):
         return str(self.id)
@@ -258,19 +242,103 @@ class DeckModel(models.Model):
         return str(self.id)
 
     def decode(self):
-        return deck.encoders.deck_decoder({
-            'cards': self.cards,
-            'pile': self.pile,
-            'count': self.count,
-        })
+        deck_object = {'cards': self.cards, 'pile': self.pile}
+        return encoders.deck_decoder(deck_object)
 
     @classmethod
     def create_deck(cls, *args, **kwargs):
-        _deck = Deck(*args, **kwargs)
-        encoded_deck = _deck.encode()
-        _deck.deck_model = cls.objects.create(
+        deck = Deck(*args, **kwargs)
+        encoded_deck = deck.encode()
+        deck.deck_model = cls.objects.create(
             cards=encoded_deck['cards'],
             pile=encoded_deck['pile'],
             count=encoded_deck['count']
         )
-        return _deck
+        return deck
+
+
+class Pile(object):
+
+    DEFAULT_PILE = "discard"
+
+    def __init__(self, piles = None):
+        self.piles = piles or {Pile.DEFAULT_PILE: []}
+        # TODO, figure out why decoding a Pile sometimes yields a dict, and
+        # sometimes yields a json
+        if not isinstance(self.piles, dict):
+            try:
+                piles = json.loads(self.piles)
+                self.piles = piles
+            except:
+                raise Exception("You must initialize Pile with"
+                                " a dictionary or JSON object.")
+
+    def count(self, pile = None):
+        if not pile:
+            pile = Pile.DEFAULT_PILE
+        the_pile = self.piles[pile]
+        return len(the_pile)
+
+    def push(self, card, into = None):
+        try:
+            pile = self.piles[into]
+        except KeyError:
+            if not into:
+                pile = self.piles[Pile.DEFAULT_PILE]
+            else:
+                self.piles[into] = pile = []
+
+        if isinstance(card, Card):
+            pile.append(card)
+        elif isinstance(card, list):
+            if all([isinstance(c, Card) for c in card]):
+                for c in card:
+                    pile.append(c)
+        else:
+            raise Exception("You may only discard a Card or a list of Cards")
+
+    def draw(self, n = 1, from_pile = None):
+        from_pile = from_pile or Pile.DEFAULT_PILE
+
+        try:
+            pile = self.piles[pile]
+        except KeyError:
+            raise Exception("You cannot draw from a pile that does not exist.")
+
+        pile_count = len(pile)
+
+        if not (pile_count > 0) or (n > pile_count):
+            raise Exception("You're trying to draw more cards than are in the"
+                            " deck!")
+        else:
+            cards = []
+            pool = pile[:]
+
+            while n > 0:
+                cards.append(pool.pop())
+                n -= 1
+
+            if len(cards) == 1:
+                cards = cards[0]
+
+            self.piles[from_pile] = pool
+            return cards
+
+    def show(self, pile = None):
+        return self.piles.get(pile, self.piles[Pile.DEFAULT_PILE])
+
+    def __repr__(self):
+        return 'Pile with ' + str(self.piles)
+
+    def __str__(self):
+        return 'Pile with ' + str(self.piles)
+
+    def __str__(self):
+        string  = "Piles:\n"
+        string += "*" * len(string) + "\n"
+
+        for key, cards in self.piles.items():
+            string += "'" + key + "'\n"
+            for card in cards:
+                string += "\t" + str(card) + "\n"
+        return string

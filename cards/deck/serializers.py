@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import DeckModel
+from models import DeckModel
 
 
 class DeckModelSerializer(serializers.ModelSerializer):
