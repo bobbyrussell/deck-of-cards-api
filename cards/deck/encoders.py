@@ -8,7 +8,11 @@ import models
 class CardEncoder(json.JSONEncoder):
 
     def default(self, card):
-        return dict((k, v) for k, v in card.__dict__.items())
+        card_object = dict(card.__dict__)
+
+        if 'code' in card_object.keys():
+            del card_object['code']
+        return card_object
 
 
 class PileEncoder(json.JSONEncoder):
