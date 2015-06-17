@@ -319,9 +319,6 @@ class Pile(object):
         return 'Pile with ' + str(self.piles)
 
     def __str__(self):
-        return 'Pile with ' + str(self.piles)
-
-    def __str__(self):
         string  = "Piles:\n"
         string += "*" * len(string) + "\n"
 
