@@ -65,7 +65,8 @@ class Card(object):
                 return True
             return False
         else:
-            raise Exception("Operands must be Card or Int")
+            raise Exception("Operands must be Card or Int "
+                            "({} passed instead)".format(type(other)))
 
     def _calculate_rank(self, other):
         _, rank = self.code
@@ -275,10 +276,13 @@ class Pile(object):
         try:
             pile = self.piles[into]
         except KeyError:
-            if not into:
-                pile = self.piles[Pile.DEFAULT_PILE]
-            else:
-                self.piles[into] = pile = []
+            try:
+                if not into:
+                    pile = self.piles[Pile.DEFAULT_PILE]
+                else:
+                    self.piles[into] = pile = []
+            except:
+                raise Exception("Could not a create pile with that name.")
 
         if isinstance(card, Card):
             pile.append(card)

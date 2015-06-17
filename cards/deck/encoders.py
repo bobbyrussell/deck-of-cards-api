@@ -55,6 +55,8 @@ class DeckEncoder(json.JSONEncoder):
 def decode_card(card):
     if 'suit' in card and 'rank' in card:
         return models.Card(suit=card['suit'], rank=card['rank'])
+    else:
+        raise DecodeException("Cannot Decode Card!")
 
 
 class CardDecoder(object):
@@ -65,12 +67,13 @@ class CardDecoder(object):
 
 def decode_pile(pile):
     piles = {}
+    try:
+        for name, named_pile in pile.items():
+            piles[name] = [decode_card(card) for card in named_pile]
 
-    for name, named_pile in pile.items():
-        piles[name] = [decode_card(card) for card in named_pile]
-
-    pile = models.Pile(piles=piles)
-    return pile
+        return models.Pile(piles=piles)
+    except:
+        raise DecodeException("Cannot Decode Card!")
 
 
 class PileDecoder(object):

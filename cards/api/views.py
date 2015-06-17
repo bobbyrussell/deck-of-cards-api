@@ -7,10 +7,11 @@ from rest_framework.views import APIView
 
 from .exceptions import BadRequestException
 
-from deck.encoders import encode_card
+from deck.encoders import encode_card, decode_card
 from deck.models import Deck, DeckModel, NotEnoughCardsException
 from deck.serializers import DeckModelSerializer, HandSerializer
 from deck.exceptions import NoSuchDeckException
+
 
 class GetDeckMixIn(object):
 
@@ -88,4 +89,31 @@ class DeckDeleteAPIView(GetDeckMixIn, APIView):
     def delete(self, request, uuid, format = None):
         deck = self.get_deck(uuid)
         deck.delete()
+        return Response()
+
+
+class DeckDiscardAPIView(GetDeckMixIn, APIView):
+
+    def put(self, request, uuid, format = None):
+        deck = self.get_deck(uuid)
+        cards = request.data
+
+        if not cards:
+            raise BadRequestException(detail="You must PUT data.")
+        else:
+            try:
+                decoded_cards = [decode_card(card) for card in cards]
+            except:
+                format_example = '[ {"rank": 2 ,"suit": "Diamonds"}, ... ]'
+                message = ("Cannot decode cards. "
+                           "The card format is:\n{}".format(format_example))
+                raise BadRequestException(detail=message)
+            into = request.query_params.get('into')
+            try:
+                deck.discard(decoded_cards, into=into)
+            except:
+                message = ("Invalid pile name. Make sure into param is a"
+                           " hashable type")
+                raise BadRequestException(detail=message)
+            deck.save()
         return Response()

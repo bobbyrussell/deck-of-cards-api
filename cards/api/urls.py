@@ -3,7 +3,7 @@ import re
 from django.conf.urls import patterns, include, url
 
 from .views import DeckCreateAPIView, DeckDetailAPIView, DeckDrawAPIView, \
-                   DeckShuffleAPIView, DeckDeleteAPIView
+                   DeckShuffleAPIView, DeckDeleteAPIView, DeckDiscardAPIView
 
 
 urlpatterns = patterns('',
@@ -16,4 +16,6 @@ urlpatterns = patterns('',
           DeckShuffleAPIView.as_view(), name='deck_api_shuffle'),
     url(r'^deck/(?P<uuid>[0-9a-f\-]{36})/delete/?$',
           DeckDeleteAPIView.as_view(), name='deck_api_delete'),
+    url(r'^deck/(?P<uuid>[0-9a-f\-]{36})/discard/?$',
+          DeckDiscardAPIView.as_view(), name='deck_api_discard'),
 )
