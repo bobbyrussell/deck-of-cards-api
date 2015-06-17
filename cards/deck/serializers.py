@@ -10,11 +10,11 @@ class DeckModelSerializer(serializers.ModelSerializer):
         fields = ('id', 'count', 'pile')
         read_only_fields = fields
 
+
 class CardSerializer(serializers.Serializer):
 
     suit = serializers.CharField()
     rank = serializers.CharField()
-
 
 
 class HandSerializer(serializers.Serializer):

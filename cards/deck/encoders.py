@@ -12,6 +12,7 @@ def encode_card(card):
         del card_object['code']
     return card_object
 
+
 class CardEncoder(json.JSONEncoder):
 
     def default(self, card):

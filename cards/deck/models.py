@@ -11,6 +11,7 @@ import encoders
 
 from .exceptions import NotEnoughCardsException, NoSuchDeckException
 
+
 class Card(object):
 
     SUITS = {

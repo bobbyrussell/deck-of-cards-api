@@ -5,6 +5,7 @@ from .encoders import decode_deck, decode_pile, decode_card, \
 
 from .models import Card, Deck, DeckModel, Pile
 
+
 class TestCard(TestCase):
 
     def setUp(self):
