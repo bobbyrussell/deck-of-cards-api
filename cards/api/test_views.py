@@ -6,7 +6,7 @@ from django.test import TestCase, Client
 
 from .views import DeckCreateAPIView
 
-from deck.models import DeckModel, Deck
+from deck.models import DeckModel, Deck, Card
 
 
 class TestDeckCreateAPIView(TestCase):
@@ -29,6 +29,29 @@ class TestDeckCreateAPIView(TestCase):
         count = json.loads(response.content).get('count')
         self.assertEqual(count, 52 * 10)
 
+        # use the count parameter to initialize a deck with 10 cards
+        url = reverse('deck_api_create') + '?count=foobar'
+        response = client.post(url)
+        self.assertEqual(response.status_code, 409)
+
+
+    def test_post_with_shuffle(self):
+        client = Client()
+
+        # if the deck is not shuffled, we should expect a Queen of Spades
+        url = reverse('deck_api_create') + '?shuffle=False'
+        response = client.post(url)
+        self.assertEqual(response.status_code, 201)
+
+        id = json.loads(response.content).get('id')
+        deck = Deck.get(id)
+        card = deck.draw()
+        self.assertEqual(card, Card("Queen", "Spades"))
+
+        # if the shuffle param is not "true" or "false", return an error
+        url = reverse('deck_api_create') + '?shuffle=42'
+        response = client.post(url)
+        self.assertEqual(response.status_code, 409)
 
 class TestDeckDetailAPIView(TestCase):
 

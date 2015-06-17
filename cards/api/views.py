@@ -24,9 +24,21 @@ class GetDeckMixIn(object):
 class DeckCreateAPIView(APIView):
 
     def post(self, request, format = None):
-        count = request.query_params.get('count', 1)
-        shuffle = request.query_params.get('shuffle', True)
-        deck = DeckModel.create_deck(n=int(count), shuffle=shuffle)
+        try:
+            count = int(request.query_params.get('count', 1))
+        except ValueError:
+            raise BadRequestException(detail="Count Must be of type Int")
+
+        shuffle_flag = request.query_params.get('shuffle', "true").lower()
+
+        if shuffle_flag == "true":
+            shuffle = True
+        elif shuffle_flag == "false":
+            shuffle = False
+        else:
+            raise BadRequestException(detail="Shuffle must be True or False.")
+
+        deck = DeckModel.create_deck(n=count, shuffle=shuffle)
         serialized_deck = DeckModelSerializer(deck.encode())
         return Response(serialized_deck.data, status=status.HTTP_201_CREATED)
 
