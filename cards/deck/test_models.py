@@ -1,7 +1,9 @@
 from django.test import TestCase
 
+from .encoders import decode_deck, decode_pile, decode_card, \
+                      encode_deck, encode_pile, encode_card
+
 from .models import Card, Deck, DeckModel, Pile
-from .encoders import DeckEncoder, CardDecoder, DeckDecoder, CardEncoder, PileEncoder, PileDecoder, deck_decoder
 
 class TestCard(TestCase):
 
@@ -17,8 +19,8 @@ class TestCard(TestCase):
 
     def test_encoding(self):
         # make sure that cards properly encode and decode
-        encoded_card = CardEncoder().encode(self.ace_of_spades)
-        decoded_card = CardDecoder().decode(encoded_card)
+        encoded_card = encode_card(self.ace_of_spades)
+        decoded_card = decode_card(encoded_card)
         self.assertEqual(self.ace_of_spades, decoded_card)
         self.assertEqual(decoded_card.rank, "Ace")
         self.assertEqual(decoded_card.suit, "Spades")
@@ -70,8 +72,8 @@ class TestDeck(TestCase):
 
     def test_encoding(self):
         # confirm that decoding and encoding doesn't break anything
-        encoded_deck = DeckEncoder().encode(self.deck)
-        decoded_deck = DeckDecoder().decode(encoded_deck)
+        encoded_deck = encode_deck(self.deck)
+        decoded_deck = decode_deck(encoded_deck)
         self.assertEqual(decoded_deck.count, self.deck.count)
 
         # draw out both decks
@@ -178,16 +180,16 @@ class TestPile(TestCase):
         self.deck = Deck()
 
     def test_encoders(self):
-        encoded_pile = PileEncoder().encode(self.pile)
-        self.assertTrue(isinstance(encoded_pile, str))
-        decoded_pile = PileDecoder().decode(encoded_pile)
+        encoded_pile = encode_pile(self.pile)
+        self.assertTrue(isinstance(encoded_pile, dict))
+        decoded_pile = decode_pile(encoded_pile)
         self.assertTrue(isinstance(decoded_pile, Pile))
-        encoded_pile = PileEncoder().encode(self.deck.pile)
-        self.assertTrue(isinstance(encoded_pile, str))
-        decoded_pile = PileDecoder().decode(encoded_pile)
-        encoded_deck = DeckEncoder().encode(self.deck)
-        self.assertTrue(isinstance(encoded_deck, str))
-        decoded_deck = DeckDecoder().decode(encoded_deck)
+        encoded_pile = encode_pile(self.deck.pile)
+        self.assertTrue(isinstance(encoded_pile, dict))
+        decoded_pile = decode_pile(encoded_pile)
+        encoded_deck = encode_deck(self.deck)
+        self.assertTrue(isinstance(encoded_deck, dict))
+        decoded_deck = decode_deck(encoded_deck)
         self.assertTrue(isinstance(decoded_deck, Deck))
         deck = DeckModel.create_deck()
         deck_id = deck.id
@@ -207,7 +209,10 @@ class TestPile(TestCase):
             self.assertTrue(isinstance(card, Card))
             self.assertEqual(card, cards[i])
 
-        deck.discard(cards, pile="foo")
+        deck.discard(cards, into="foo")
         for i, card in enumerate(deck.pile.show("foo")):
             self.assertTrue(isinstance(card, Card))
             self.assertEqual(card, cards[i])
+
+        from_pile = deck.draw(7, from_pile="foo")
+        self.assertEqual(len(from_pile), 7)

@@ -9,6 +9,8 @@ from django.db import models
 
 import encoders
 
+from .exceptions import NotEnoughCardsException, NoSuchDeckException
+
 class Card(object):
 
     SUITS = {
@@ -111,7 +113,7 @@ class Deck(object):
         try:
             deck_model = DeckModel.objects.get(pk=id)
         except Exception:
-            raise Exception("No Such Deck Exists")
+            raise NoSuchDeckException("No Such Deck Exists")
 
         decoded_deck = deck_model.decode()
         decoded_deck.deck_model = deck_model
@@ -160,11 +162,11 @@ class Deck(object):
 
     def draw(self, n = 1, till = None, from_pile = None):
         if from_pile:
-            return self._draw_from_pile(from_pile)
+            return self.pile.draw(n=n,from_pile=from_pile)
 
         if not self.has_cards() or n > self.count:
-            raise Exception("You're trying to draw more cards than are in the"
-                            " deck!")
+            raise NotEnoughCardsException("You're trying to draw more cards"
+                                          " than are in the deck!")
         else:
             cards = []
             pool = self.cards[:]
@@ -188,8 +190,8 @@ class Deck(object):
             self.count = len(self.cards)
             return cards
 
-    def discard(self, card, pile = None):
-        self.pile.push(card, into=pile)
+    def discard(self, card, into = None):
+        self.pile.push(card, into=into)
 
     def has_cards(self):
         if self.count > 0:
@@ -197,9 +199,7 @@ class Deck(object):
         return False
 
     def encode(self):
-        encoded_deck = self.encoder.default(self)
-
-        return encoded_deck
+        return self.encoder.default(self)
 
     def save(self):
         if self.deck_model:
@@ -212,7 +212,7 @@ class Deck(object):
 
     def delete(self):
         if self.deck_model:
-            deck_model.delete()
+            self.deck_model.delete()
         else:
             raise Exception("No Deck Model Set!")
 
@@ -243,7 +243,7 @@ class DeckModel(models.Model):
 
     def decode(self):
         deck_object = {'cards': self.cards, 'pile': self.pile}
-        return encoders.deck_decoder(deck_object)
+        return encoders.decode_deck(deck_object)
 
     @classmethod
     def create_deck(cls, *args, **kwargs):
@@ -263,15 +263,6 @@ class Pile(object):
 
     def __init__(self, piles = None):
         self.piles = piles or {Pile.DEFAULT_PILE: []}
-        # TODO, figure out why decoding a Pile sometimes yields a dict, and
-        # sometimes yields a json
-        if not isinstance(self.piles, dict):
-            try:
-                piles = json.loads(self.piles)
-                self.piles = piles
-            except:
-                raise Exception("You must initialize Pile with"
-                                " a dictionary or JSON object.")
 
     def count(self, pile = None):
         if not pile:
@@ -301,15 +292,15 @@ class Pile(object):
         from_pile = from_pile or Pile.DEFAULT_PILE
 
         try:
-            pile = self.piles[pile]
+            pile = self.piles[from_pile]
         except KeyError:
             raise Exception("You cannot draw from a pile that does not exist.")
 
         pile_count = len(pile)
 
         if not (pile_count > 0) or (n > pile_count):
-            raise Exception("You're trying to draw more cards than are in the"
-                            " deck!")
+            raise NotEnoughCardsException("You're trying to draw more cards"
+                                          " than are in the deck!")
         else:
             cards = []
             pool = pile[:]
@@ -318,10 +309,6 @@ class Pile(object):
                 cards.append(pool.pop())
                 n -= 1
 
-            if len(cards) == 1:
-                cards = cards[0]
-
-            self.piles[from_pile] = pool
             return cards
 
     def show(self, pile = None):
@@ -339,6 +326,9 @@ class Pile(object):
 
         for key, cards in self.piles.items():
             string += "'" + key + "'\n"
-            for card in cards:
-                string += "\t" + str(card) + "\n"
+            if not cards:
+                string += "\t* (Nothing here)\n"
+            else:
+                for card in cards:
+                    string += "\t* " + str(card) + "\n"
         return string
