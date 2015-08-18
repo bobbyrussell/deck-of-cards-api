@@ -13,7 +13,7 @@ class TestDeckCreateAPIView(TestCase):
 
     def test_post(self):
         client = Client()
-        response = client.post(reverse('deck_api_create'))
+        response = client.post(reverse('api:deck_create'))
 
         self.assertEqual(response.status_code, 201)
 
@@ -25,7 +25,7 @@ class TestDeckCreateAPIView(TestCase):
     def test_post_with_count(self):
         # use the count parameter to initialize a deck with 10 cards
         client = Client()
-        url = reverse('deck_api_create') + '?count=10'
+        url = reverse('api:deck_create') + '?count=10'
         response = client.post(url)
 
         self.assertEqual(response.status_code, 201)
@@ -35,7 +35,7 @@ class TestDeckCreateAPIView(TestCase):
         self.assertEqual(count, 52 * 10)
 
         # use the count parameter to initialize a deck with 10 cards
-        url = reverse('deck_api_create') + '?count=foobar'
+        url = reverse('api:deck_create') + '?count=foobar'
         response = client.post(url)
 
         self.assertEqual(response.status_code, 409)
@@ -45,7 +45,7 @@ class TestDeckCreateAPIView(TestCase):
         client = Client()
 
         # if the deck is not shuffled, we should expect a Queen of Spades
-        url = reverse('deck_api_create') + '?shuffle=False'
+        url = reverse('api:deck_create') + '?shuffle=False'
         response = client.post(url)
 
         self.assertEqual(response.status_code, 201)
@@ -57,7 +57,7 @@ class TestDeckCreateAPIView(TestCase):
         self.assertEqual(card, Card("Queen", "Spades"))
 
         # if the shuffle param is not "true" or "false", return an error
-        url = reverse('deck_api_create') + '?shuffle=42'
+        url = reverse('api:deck_create') + '?shuffle=42'
         response = client.post(url)
 
         self.assertEqual(response.status_code, 409)
@@ -70,7 +70,7 @@ class TestDeckDetailAPIView(TestCase):
 
     def test_get(self):
         client = Client()
-        response = client.get(reverse('deck_api_detail', args=(self.id,)))
+        response = client.get(reverse('api:deck_detail', args=(self.id,)))
 
         self.assertEqual(response.status_code, 200)
 
@@ -88,12 +88,12 @@ class TestDeckDraw(TestCase):
     def test_put(self):
         client = Client()
 
-        url = reverse('deck_api_draw', args=(self.id,))
+        url = reverse('api:deck_draw', args=(self.id,))
         response = client.put(url)
         self.assertEqual(response.status_code, 200)
 
         # draw 7 cards
-        url = "{}{}".format(reverse('deck_api_draw', args=(self.id,)),
+        url = "{}{}".format(reverse('api:deck_draw', args=(self.id,)),
                             "?count=7")
         response = client.put(url)
         decoded_response = json.loads(response.content)
@@ -102,7 +102,7 @@ class TestDeckDraw(TestCase):
             self.assertTrue(isinstance(card, dict))
 
         # attempt to draw more cards from the deck than there are in the deck
-        url = "{}{}".format(reverse('deck_api_draw', args=(self.id,)),
+        url = "{}{}".format(reverse('api:deck_draw', args=(self.id,)),
                             "?count={}".format(self.deck.count + 1))
         response = client.put(url)
 
@@ -117,7 +117,7 @@ class TestDeckShuffle(TestCase):
 
     def test_put(self):
         client = Client()
-        url = reverse('deck_api_shuffle', args=(self.id,))
+        url = reverse('api:deck_shuffle', args=(self.id,))
         response = client.put(url)
 
         self.assertEqual(response.status_code, 200)
@@ -130,7 +130,7 @@ class TestDeckDelete(TestCase):
 
     def test_put(self):
         client = Client()
-        url = reverse('deck_api_delete', args=(self.id,))
+        url = reverse('api:deck_delete', args=(self.id,))
         response = client.delete(url)
 
         self.assertEqual(response.status_code, 200)
@@ -148,7 +148,7 @@ class TestDiscardHand(TestCase):
         client = Client()
         cards = [{'rank': "Ace", 'suit': "Spades"},
                  {'rank': 2, 'suit': "Diamonds"}]
-        url = reverse('deck_api_discard', args=(self.id,))
+        url = reverse('api:deck_discard', args=(self.id,))
         response = client.put(url, data=json.dumps(cards),
                               content_type='application/json')
 
@@ -161,13 +161,13 @@ class TestDiscardHand(TestCase):
             self.assertIn(card, deck.pile.piles['discard'])
 
         # make sure data gets put into the endpoint
-        url = reverse('deck_api_discard', args=(self.id,))
+        url = reverse('api:deck_discard', args=(self.id,))
         response = client.put(url, content_type='application/json')
 
         self.assertEqual(response.status_code, 409)
 
         # make sure data that IS put it is valid
-        url = reverse('deck_api_discard', args=(self.id,))
+        url = reverse('api:deck_discard', args=(self.id,))
         data = [{'foo': 42, 'bar': 'baz'}]
         response = client.put(url, data=json.dumps(data),
                               content_type='application/json')
@@ -179,7 +179,7 @@ class TestDiscardHand(TestCase):
         client = Client()
         cards = [{'rank': "Ace", 'suit': "Spades"},
                  {'rank': 2, 'suit': "Diamonds"}]
-        url = reverse('deck_api_discard', args=(self.id,)) + '?into=my+pile'
+        url = reverse('api:deck_discard', args=(self.id,)) + '?into=my+pile'
         response = client.put(url, data=json.dumps(cards),
                               content_type='application/json')
 
