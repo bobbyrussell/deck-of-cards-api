@@ -1,3 +1,11 @@
+"""
+.. module:: deck.models
+   :synopsis: Contains the implementation of a deck of cards.
+
+.. moduleauthor:: Bobby Russell <bobbyrussell@gmail.com>
+
+"""
+
 import collections
 import json
 import random
@@ -13,6 +21,15 @@ from .exceptions import NotEnoughCardsException, NoSuchDeckException
 
 
 class Card(object):
+    """Card: Playing Card Object
+
+    A simple playing card. Each card has a suit and a rank. Options for a suit
+    are the strings Hearts, Clubs, Diamonds, or Spades. Options for a rank are
+    the numbers 2 through 10, or the strings Jack, Queen, King, or Ace.
+
+    Card implements comparison using the dunder methods :func:__eq__ and
+    :func:__lt__ against encoded ranks.
+    """
 
     SUITS = {
         "Hearts": "H", "Clubs": "C",
@@ -28,19 +45,48 @@ class Card(object):
     }
 
     def __init__(self, rank, suit):
+        """Initialize a Card: Card(rank, suit)
+
+        Args:
+            rank (int or str): The cards rank
+            suit (str): The cards suit
+
+        Attributes:
+            rank (int or str): The cards rank
+            suit (str): The cards suit
+
+        Raises:
+            Exception if invalid suits or ranks are passed
+        """
         try:
             self.rank = rank
             self.suit = suit
-            self.code = (Card.SUITS[suit], Card.RANKS[rank])
+            self.code = (self.SUITS[suit], self.RANKS[rank])
         except KeyError as e:
             raise Exception("Invalid Card.")
 
     def __eq__(self, other):
+        """Determine if a card is equal to a given value
+
+        Args:
+            other (int or str or |card|): Value or reference to compare against
+
+        Raises:
+            Exception if the :param other: is invalid.
+
+        Returns:
+            bool: True if |self| and :param other: other are equal, and False
+            otherwise
+
+        Compare the rank value of a :type str: or :type int: against
+        |self|'s rank. If :param other: is a |card|, both suit and rank must be
+        equal.
+        """
         suit, rank = self.code
 
         if isinstance(other, int):
             try:
-                other_rank = Card.RANKS[other]
+                other_rank = self.RANKS[other]
             except KeyError:
                 message = "Numerical operands must be between 2 and 10."
                 raise Exception(message)
@@ -50,7 +96,7 @@ class Card(object):
             return False
         elif isinstance(other, str):
             try:
-                other_rank = Card.RANKS[other]
+                other_rank = self.RANKS[other]
             except KeyError:
                 message = "Operands must be a valid Rank."
                 raise Exception(message)
@@ -69,10 +115,25 @@ class Card(object):
                             "({} passed instead)".format(type(other)))
 
     def _calculate_rank(self, other):
+        """Translate the rank of another card or rank value into an encoded rank
+
+        Args:
+            other (int or str or Card): a rank or Card
+
+        Raises:
+            Exception if the :param other: is invalid.
+
+        Returns:
+            tuple: The encoded ranks of both self and other, respectively
+
+        Generate a tuple with the encoded ranks of both |self| and the
+        :param other:. This rank is used internally to make comparisons easier
+        to implement.
+        """
         _, rank = self.code
 
         if isinstance(other, int):
-            other_rank = Card.RANKS[other]
+            other_rank = self.RANKS[other]
         elif isinstance(other, str):
             try:
                 other_rank = Card.RANKS[other]
@@ -86,6 +147,21 @@ class Card(object):
         return rank, other_rank
 
     def __lt__(self, other):
+        """Determine if a card is less than a given value
+
+        Args:
+            other (int or str or |card|): Value or reference to compare against
+
+        Raises:
+            Exception if the :param other: is invalid.
+
+        Returns:
+            bool: True if |self| is less than :param other:, False otherwise
+
+        Compare the rank value of a :type str: or :type int: against
+        |self|'s rank. If :param other: is a |card|, both suit and rank must be
+        equal.
+        """
         rank, other_rank = self._calculate_rank(other)
 
         if rank < other_rank:
@@ -93,12 +169,49 @@ class Card(object):
         return False
 
     def __le__(self, other):
+        """Determine if a card is less than or equal to a given value
+
+        Args:
+            other (int or str or |card|): Value or reference to compare against
+
+        Raises:
+            Exception if the :param other: is invalid.
+
+        Returns:
+            bool: True if |self| is less than or equal to :param other:, False
+            otherwise
+        """
+
         return (self < other) or (self == other)
 
     def __gt__(self, other):
+        """Determine if a card is less than or equal to a given value
+
+        Args:
+            other (int or str or |card|): Value or reference to compare against
+
+        Raises:
+            Exception if the :param other: is invalid.
+
+        Returns:
+            bool: True if |self| is greater than :param other:, False otherwise
+        """
+
         return (not self < other) and (not self == other)
 
     def __ge__(self, other):
+        """Determine if a card is less than or equal to a given value
+
+        Args:
+            other (int or str or |card|): Value or reference to compare against
+
+        Raises:
+            Exception if the :param other: is invalid.
+
+        Returns:
+            bool: True if |self| is greater than or equal to :param other:,
+            False otherwise
+        """
         return (self > other) or (self == other)
 
     def __str__(self):
@@ -109,9 +222,25 @@ class Card(object):
 
 
 class Deck(object):
+    """Deck: A Deck of Playing Cards
+
+    A container for |card| objects. If you need persistence, use the
+    DeckModel.create_deck.
+    """
 
     @staticmethod
     def get(id):
+        """Retrieve a saved Deck
+
+        Args:
+            id (str): A UUID associated with a saved Deck
+
+        Returns:
+            Deck: a Deck with UUID id
+
+        Raises:
+            NoSuchDeckException if the Deck does not exist
+        """
         try:
             deck_model = DeckModel.objects.get(pk=id)
         except Exception:
@@ -123,6 +252,29 @@ class Deck(object):
 
     def __init__(self, n = 1, cards = None, pile = None,
                  deck_model = None, shuffle = True):
+        """Initialize a Deck: Deck(n, cards, pile, deck_model, shuffle)
+
+        Attributes:
+            pile (Pile): A container for discarded Cards
+
+            deck_model (DeckModel): An object that manages the a Deck's
+            persistence functions
+
+            encoder (DeckEncoder): An object that knows how to encode a Deck
+
+            cards (Card list): The Deck's cards
+
+            count (int): The total number of cards in the Deck
+
+        Keyword Args:
+            n (int): Initialize the Deck with 52 * n cards. n must be greater
+            than or equal to 1
+
+            cards (Card list or None): Use a list of Card objects to populate
+            the Deck.
+
+            pile (Pile or None): Use a Pile for the Deck's pile
+        """
         self.pile = pile or Pile()
         self.deck_model = deck_model
         self.encoder = encoders.DeckEncoder()
@@ -145,6 +297,16 @@ class Deck(object):
 
     @property
     def id(self):
+        """
+        Returns:
+            str: A UUID in string format
+
+        Raises:
+            Exception if no ID is set.
+
+        The UUID-formatted identifier for the Deck. Note that this is a
+        property.
+        """
         if self.deck_model:
             return str(self.deck_model.id)
         else:
@@ -154,9 +316,27 @@ class Deck(object):
         return iter(self.cards)
 
     def shuffle(self):
+        """Shuffle the cards of the deck
+
+        Returns:
+            None: This method mutates the ordering of the cards
+
+        Randomize the ordering of the Deck's cards.
+        """
         random.shuffle(self.cards)
 
     def _search(self, till):
+        """Search for a card in the Deck
+
+        Args:
+            till (Card): A card to search the Deck for.
+
+        Returns:
+            int: The index of the card in the cards list, or -1 if the Deck
+            contains to such card.
+
+        This function helps implement some of the draw method's functionality.
+        """
         for i, card in enumerate(self):
             if card == till:
                 return i
