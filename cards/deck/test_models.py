@@ -217,3 +217,7 @@ class TestPile(TestCase):
 
         from_pile = deck.draw(7, from_pile="foo")
         self.assertEqual(len(from_pile), 7)
+        # make sure that we only discard Cards and raise an exception if we try
+        # to discard non-Cards
+        not_cards  = ["Not A Card", Card("Ace", "Spades")]
+        self.assertRaises(Exception, deck.discard, not_cards)

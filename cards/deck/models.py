@@ -467,9 +467,11 @@ class Pile(object):
         if isinstance(card, Card):
             pile.append(card)
         elif isinstance(card, list):
-            if all([isinstance(c, Card) for c in card]):
-                for c in card:
+            for c in card:
+                if isinstance(c, Card):
                     pile.append(c)
+                else:
+                    raise Exception("There is a non-card in this pile")
         else:
             raise Exception("You may only discard a Card or a list of Cards")
 
