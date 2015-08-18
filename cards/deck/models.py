@@ -83,36 +83,21 @@ class Card(object):
         equal.
         """
         suit, rank = self.code
-
-        if isinstance(other, int):
-            try:
-                other_rank = self.RANKS[other]
-            except KeyError:
-                message = "Numerical operands must be between 2 and 10."
-                raise Exception(message)
+        try:
+            other_rank = self.RANKS[other]
 
             if rank == other_rank:
                 return True
             return False
-        elif isinstance(other, str):
+        except KeyError:
             try:
-                other_rank = self.RANKS[other]
-            except KeyError:
-                message = "Operands must be a valid Rank."
-                raise Exception(message)
+                other_suit, other_rank = other.code
 
-            if rank == other_rank:
-                return True
-            return False
-        elif isinstance(other, Card):
-            other_suit, other_rank = other.code
-
-            if suit == other_suit and rank == other_rank:
-                return True
-            return False
-        else:
-            raise Exception("Operands must be Card or Int "
-                            "({} passed instead)".format(type(other)))
+                if suit == other_suit and rank == other_rank:
+                    return True
+                return False
+            except AttributeError:
+                raise Exception
 
     def _calculate_rank(self, other):
         """Translate the rank of another card or rank value into an encoded rank
@@ -132,17 +117,13 @@ class Card(object):
         """
         _, rank = self.code
 
-        if isinstance(other, int):
-            other_rank = self.RANKS[other]
-        elif isinstance(other, str):
+        try:
+            other_rank = Card.RANKS[other]
+        except KeyError:
             try:
-                other_rank = Card.RANKS[other]
-            except KeyError:
-                raise Exception("Numerical card values must be between 2 and 10")
-        elif isinstance(other, Card):
-            _, other_rank = other.code
-        else:
-            raise Exception("Illegal Operation: Operands must be Card or Int")
+                _, other_rank = other.code
+            except AttributeError:
+                raise Exception
 
         return rank, other_rank
 
@@ -181,7 +162,6 @@ class Card(object):
             bool: True if |self| is less than or equal to :param other:, False
             otherwise
         """
-
         return (self < other) or (self == other)
 
     def __gt__(self, other):
@@ -464,16 +444,17 @@ class Pile(object):
             except:
                 raise Exception("Could not a create pile with that name.")
 
-        if isinstance(card, Card):
-            pile.append(card)
-        elif isinstance(card, list):
+        try:
             for c in card:
                 if isinstance(c, Card):
                     pile.append(c)
                 else:
                     raise Exception("There is a non-card in this pile")
-        else:
-            raise Exception("You may only discard a Card or a list of Cards")
+        except TypeError:
+            if isinstance(card, Card):
+                pile.append(card)
+            else:
+                raise Exception("You may only discard a Card or a list of Cards")
 
     def draw(self, n = 1, from_pile = None):
         from_pile = from_pile or Pile.DEFAULT_PILE
