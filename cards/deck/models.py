@@ -99,6 +99,9 @@ class Card(object):
             except AttributeError:
                 raise Exception
 
+    def __ne__(self, other):
+        return not self == other
+
     def _calculate_rank(self, other):
         """Translate the rank of another card or rank value into an encoded rank
 

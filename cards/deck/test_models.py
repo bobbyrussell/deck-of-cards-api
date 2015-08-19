@@ -58,9 +58,10 @@ class TestCard(TestCase):
         self.assertTrue(self.five_of_clubs == 5)
 
         self.assertTrue(self.ace_of_spades == "Ace")
-
         ace_of_spades = Card("Ace", "Spades")
-        self.assertTrue(self.ace_of_spades == ace_of_spades)
+        ten_of_diamonds = Card(10, "Diamonds")
+        self.assertEqual(self.ace_of_spades, ace_of_spades)
+        self.assertNotEqual(self.ace_of_spades, ten_of_diamonds)
 
 
 class TestDeck(TestCase):
