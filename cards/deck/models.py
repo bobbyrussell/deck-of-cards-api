@@ -324,7 +324,7 @@ class Deck(object):
 
     def draw(self, n = 1, till = None, from_pile = None):
         if from_pile:
-            return self.pile.draw(n=n,from_pile=from_pile)
+            return self.pile.draw(n=n, from_pile=from_pile)
 
         if not self.has_cards() or n > self.count:
             raise NotEnoughCardsException("You're trying to draw more cards"
@@ -424,11 +424,11 @@ class Pile(object):
     DEFAULT_PILE = "discard"
 
     def __init__(self, piles = None):
-        self.piles = piles or {Pile.DEFAULT_PILE: []}
+        self.piles = piles or {self.DEFAULT_PILE: []}
 
     def count(self, pile = None):
         if not pile:
-            pile = Pile.DEFAULT_PILE
+            pile = self.DEFAULT_PILE
         the_pile = self.piles[pile]
         return len(the_pile)
 
@@ -438,7 +438,7 @@ class Pile(object):
         except KeyError:
             try:
                 if not into:
-                    pile = self.piles[Pile.DEFAULT_PILE]
+                    pile = self.piles[self.DEFAULT_PILE]
                 else:
                     self.piles[into] = pile = []
             except:
@@ -457,7 +457,7 @@ class Pile(object):
                 raise Exception("You may only discard a Card or a list of Cards")
 
     def draw(self, n = 1, from_pile = None):
-        from_pile = from_pile or Pile.DEFAULT_PILE
+        from_pile = from_pile or self.DEFAULT_PILE
 
         try:
             pile = self.piles[from_pile]
@@ -480,7 +480,7 @@ class Pile(object):
             return cards
 
     def show(self, pile = None):
-        return self.piles.get(pile, self.piles[Pile.DEFAULT_PILE])
+        return self.piles.get(pile, self.piles[self.DEFAULT_PILE])
 
     def __repr__(self):
         return 'Pile with ' + str(self.piles)
