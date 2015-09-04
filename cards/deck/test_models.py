@@ -116,8 +116,13 @@ class TestDeck(TestCase):
         hand_copy = hand[:]
         self.deck.discard(hand)
         self.assertEqual(self.deck.count, 52 - 7)
-        # self.deck.draw(7, from_pile="discard")
-
+        # make sure that we only discard Cards and raise an exception if we try
+        # to discard non-Cards
+        deck = Deck()
+        not_a_card  = [Card("Ace", "Spades"), Card(2, "Diamonds"), "Not a Card"]
+        self.assertRaises(Exception, deck.discard, not_a_card)
+        not_a_card = "This isn't a Card Either"
+        self.assertRaises(Exception, deck.discard, not_a_card)
 
     def test_draw(self):
         queen = self.unshuffled_deck.draw()
@@ -218,9 +223,3 @@ class TestPile(TestCase):
 
         from_pile = deck.draw(7, from_pile="foo")
         self.assertEqual(len(from_pile), 7)
-        # make sure that we only discard Cards and raise an exception if we try
-        # to discard non-Cards
-        not_a_card  = [Card("Ace", "Spades"), "Not a Card"]
-        self.assertRaises(Exception, deck.discard, not_a_card)
-        not_a_card = "This isn't a Card Either"
-        self.assertRaises(Exception, deck.discard, not_a_card)

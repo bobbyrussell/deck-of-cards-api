@@ -448,11 +448,11 @@ class Pile(object):
                 raise Exception("Could not a create pile with that name.")
 
         try:
-            for c in card:
-                if isinstance(c, Card):
+            if all([isinstance(c, Card) for c in card]):
+                for c in card:
                     pile.append(c)
-                else:
-                    raise Exception("There is a non-card in this pile")
+            else:
+                raise Exception("There is a non-card in this pile")
         except TypeError:
             if isinstance(card, Card):
                 pile.append(card)
